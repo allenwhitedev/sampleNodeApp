@@ -1,1 +1,1 @@
-Requires a .config.js file with a valid 'mongoUrl' & 'databaseName' exports to successfully connect to a mongo database. 
+Requires a .config.js file with valid 'mongoUrl', 'databaseName', & 'saltRounds' exports to successfully connect to a mongo database & hash passwords using bcrypt. 

@@ -14,6 +14,7 @@
   "author": "allenwhitedev",
   "license": "ISC",
   "dependencies": {
+    "bcrypt": "^1.0.3",
     "express": "^4.16.2",
     "mongodb": "^3.0.4"
   }
