@@ -1,25 +1,49 @@
+const MongoClient = require('mongodb').MongoClient
+const ObjectId = require('mongodb').ObjectId // used for automatic _id field generated in each mongo document
+const bcrypt = require('bcrypt')
+const uuidv1 = require('uuid/v1') // use uuid for unique session ids
+
+let config = null
+try { config = require('./.config.js') } 
+catch(e) 
+{ 
+	if (e instanceof Error && e.code === 'MODULE_NOT_FOUND')
+		console.log("Could not find a .config.js in root directory, using a default development config")
+}
+
+// express middleware (excluding authentication)
 const express = require('express')
 const app = express()
 app.use(express.json()) // allows JSON-encoded bodies (req.body - can be used for more complex post operations)
 app.use(express.urlencoded({ extended: true })) // allows URL-encoded bodies from post/patch, etc. (req.body, also note form-data is allowed but not handled in express routes)
-const MongoClient = require('mongodb').MongoClient
-const ObjectId = require('mongodb').ObjectId // used for automatic _id field generated in each mongo document
-const config = require('./.config.js')
-const bcrypt = require('bcrypt')
-const uuidv1 = require('uuid/v1') // use uuid for unique session ids
-app.use( authenticateUser ) // called before each route app.use()
+app.use( express.static('build') ) // serve static files from react build
 
-// node/express/mongo initialization
-let PORT = 8002
-if ( process.env.PORT )
-	PORT = process.env.PORT
-app.listen(PORT, () => console.log(`Node app listening on port ${ PORT }`) )
 
-// declare imported config variables 
-const mongoUrl = config.mongoUrl 
-const databaseName = config.databaseName 
-const saltRounds = config.saltRounds
+// node/express initialization
+let mongoUrl, databaseName, saltRounds, port, environment
+if ( config ) // config is used in production
+{
+	environment = config.environment
+	port = config.port
+	mongoUrl = config.mongoUrl 
+	databaseName = config.databaseName 
+	saltRounds = config.saltRounds
+} 
+else // use a default development configuration when .config.js does not exist
+{
+	environment = 'development'
+	port = 8002
+	mongoUrl = 'mongodb://localhost:27017/sampleNodeAppDbDevelopment'
+	databaseName = 'sampleNodeAppDbDevelopment' 
+	saltRounds = 12
+	let cors = require('cors')
+	app.use( cors() ) // allow Cross Origin Resource Sharing in development
+}
+app.use( authenticateUser ) // called before each route app.use() (app.use(authenticateUser) must come after app.use( cors() ) otherwise cors will not be allowed) 
+app.listen(port, () => console.log(`Node app listening on port ${ port } in ${environment}`) ) // start app
 
+// mongo initialization
+console.log('mongoUrl:', mongoUrl)
 let globalDatabase = null // database is property of databases returned from MongoClient.connect() if using mongo v>3.4
 MongoClient.connect(mongoUrl, (err, databases) =>
 {
@@ -79,13 +103,14 @@ function parseValueFromCookieString(key, wholeString)
 	return decodeURIComponent(!!keyPortionOfString ? keyPortionOfString.toString().replace(/^[^=]+./, '') : '') // return everything after equal sign, otherwise return empty string
 }
 
-
-// express routes
+// serves react file from build/index.html
 app.get('/', (req, res) =>
 {
-	res.send({error: null, message: `Success! from / route of sampleNodeApp on port ${ PORT }`})
+	res.sendFile( __dirname + '/index.html')
+//	res.send({error: null, message: `Success! from / route of sampleNodeApp on port ${ PORT }`})
 })
 
+// express api routes
 // test routes
 app.get('/test', (req, res) =>
 {
@@ -128,7 +153,7 @@ app.post('/login', (req, res) =>
 	if ( req.body && req.body.username && req.body.password )
 			globalDatabase.collection('users').findOne({username: req.body.username}, (err, result) => // check if user exists in db
 			{
-				console.log('findOne result:', result)
+				console.log('findOne result from /login:', result)
 				if (err)
 				{
 					console.log(err) // move to error logging when implemented 

@@ -18,5 +18,8 @@
     "express": "^4.16.2",
     "mongodb": "^3.0.4",
     "uuid": "^3.2.1"
+  },
+  "devDependencies": {
+    "cors": "^2.8.4"
   }
 }
